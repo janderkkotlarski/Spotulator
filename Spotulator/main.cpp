@@ -5,6 +5,17 @@
 
 #include <SFML/Graphics.hpp>
 
+void assert_strings(const std::vector <std::string>& a_strings)
+{
+    const int size = static_cast<int>(a_strings.size());
+    assert(size > 0);
+
+    for (int count{0}; count < size; ++count)
+    {
+        assert(a_strings[count] != "");
+    }
+}
+
 sf::Vector2u img_dims(const std::string& img_name)
 {
     assert(img_name != "");
@@ -23,6 +34,11 @@ sf::Vector2i cell_dimensions(const std::vector <std::string>& image_names)
 {
     const int size{static_cast<int>(image_names.size())};
     assert(size > 0);
+
+    for (int count{0}; count < size; ++ count)
+    {
+        assert(image_names[count] != "");
+    }
 
     const sf::Vector2u null_dims{0, 0};
     assert(null_dims == sf::Vector2u(0, 0));
@@ -59,7 +75,6 @@ sf::Vector2i cell_dimensions(const std::vector <std::string>& image_names)
     }
 
     return cell_dims;
-
 }
 
 class spot
@@ -81,8 +96,73 @@ class spot
 
 };
 
-int window_maker(const std::string& program_name)
+bool escaper()
 {
+    return sf::Keyboard::isKeyPressed(sf::Keyboard::Escape);
+}
+
+bool poller(sf::RenderWindow& window, sf::Event& event)
+{
+    return window.pollEvent(event);
+}
+
+bool closer(sf::Event& event)
+{
+    return event.type == sf::Event::Closed;
+
+}
+
+int closing(sf::RenderWindow& window)
+{
+    window.close();
+    return 0;
+}
+
+int window_maker(const std::string& program_name,
+                 std::vector <std::string>& image_names,
+                 const int win_dim, const float spf, const float timeout)
+{
+    assert(program_name != "");
+
+    assert_strings(image_names);
+
+    assert(win_dim > 0);
+
+    sf::RenderWindow window(sf::VideoMode(win_dim, win_dim), program_name, sf::Style::Default);
+
+    while (window.isOpen())
+    {
+        sf::Clock watch;
+        sf::Time timer;
+
+        sf::Event event;
+
+        window.clear();
+
+        window.display();
+
+        if(escaper())
+        {
+            return closing(window);
+        }
+
+        while (poller(window, event))
+        {
+            if (closer(event))
+            {
+                return closing(window);
+            }
+        }
+
+    }
+
+    return 1;
+}
+
+int initiator(const std::string& program_name)
+{
+    assert(program_name != "");
+
     std::vector <std::string> image_names;
 
     int size{0};
@@ -96,13 +176,23 @@ int window_maker(const std::string& program_name)
     ++size;
 
     const sf::Vector2i cell_dims{cell_dimensions(image_names)};
+    assert(cell_dims.x == cell_dims.y);
 
+    const int cells{11};
 
+    const int win_dim{cells*cell_dims.x};
+
+    const float fps{50.0f};
+
+    const float spf{1.0f/fps};
+
+    const float timeout{30.0f};
 
     if (cell_dims != sf::Vector2i(0, 0))
     {
         std::cout << "Works!\n";
-        return 0;
+        return window_maker(program_name, image_names, win_dim,
+                            spf, timeout);
     }
 
     return 1;
@@ -113,6 +203,6 @@ int main()
     const std::string program_name{"Spotulator"};
     assert(program_name != "");
 
-    return window_maker(program_name);
+    return initiator(program_name);
 }
 
