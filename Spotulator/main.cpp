@@ -30,6 +30,11 @@ sf::Vector2u img_dims(const std::string& img_name)
     return texture.getSize();
 }
 
+sf::Vector2i tex_dims(sf::Texture& texture)
+{
+    return static_cast<sf::Vector2i>(texture.getSize());
+}
+
 sf::Vector2i cell_dimensions(const std::vector <std::string>& image_names)
 {
     const int size{static_cast<int>(image_names.size())};
@@ -87,11 +92,38 @@ class spot
 
     const sf::Color m_color;
 
-    const sf::Texture m_texture;
+    sf::Texture m_texture;
 
-    const sf::Sprite m_sprite;
+    sf::Sprite m_sprite;
+
+    sf::Vector2i m_dims;
+
+    void texturize()
+    {
+        assert(m_spot_name != "");
+
+        if (!m_texture.loadFromFile(m_spot_name))
+        {
+            std::cout << m_spot_name << " not found!\n";
+        }
+    }
+
+    void set_texture()
+    {
+        m_sprite.setTexture(m_texture);
+    }
 
 
+
+    public:
+
+    spot(const std::string& spot_name, const int type, const sf::Vector2i& posit,
+         const sf::Color& color)
+        : m_spot_name(spot_name), m_type(type), m_posit(posit), m_color(color),
+          m_texture(), m_sprite(), m_dims()
+    {
+
+    }
 
 
 };
@@ -118,9 +150,38 @@ int closing(sf::RenderWindow& window)
     return 0;
 }
 
+bool traving(sf::Clock& clock, sf::Time time, const float travis)
+{
+    assert(travis > 0.0f);
+
+    if (travis > 0.0f)
+    {
+        time = clock.getElapsedTime();
+
+        if (time.asSeconds() >= travis)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void timing(sf::Clock& watch, sf::Time& timer, const float spf)
+{
+    assert(spf> 0.0f);
+    timer = watch.getElapsedTime();
+
+    while(timer.asSeconds() < spf)
+    {
+        timer = watch.getElapsedTime();
+    }
+}
+
 int window_maker(const std::string& program_name,
                  std::vector <std::string>& image_names,
-                 const int win_dim, const float spf, const float timeout)
+                 const int win_dim, const float spf,
+                 const float travis)
 {
     assert(program_name != "");
 
@@ -128,7 +189,12 @@ int window_maker(const std::string& program_name,
 
     assert(win_dim > 0);
 
+    assert(spf > 0.0f);
+
     sf::RenderWindow window(sf::VideoMode(win_dim, win_dim), program_name, sf::Style::Default);
+
+    sf::Clock clock;
+    sf::Time time;
 
     while (window.isOpen())
     {
@@ -154,6 +220,13 @@ int window_maker(const std::string& program_name,
             }
         }
 
+        timing(watch, timer, spf);
+
+        if (traving(clock, time, travis))
+        {
+            return 0;
+        }
+
     }
 
     return 1;
@@ -161,6 +234,8 @@ int window_maker(const std::string& program_name,
 
 int initiator(const std::string& program_name)
 {
+    const float travis{3.0f};
+
     assert(program_name != "");
 
     std::vector <std::string> image_names;
@@ -179,20 +254,22 @@ int initiator(const std::string& program_name)
     assert(cell_dims.x == cell_dims.y);
 
     const int cells{11};
+    assert(cells > 0);
 
     const int win_dim{cells*cell_dims.x};
 
     const float fps{50.0f};
+    assert(fps > 0.0f);
 
     const float spf{1.0f/fps};
 
     const float timeout{30.0f};
+    assert(timeout > 0.0f);
 
     if (cell_dims != sf::Vector2i(0, 0))
     {
-        std::cout << "Works!\n";
         return window_maker(program_name, image_names, win_dim,
-                            spf, timeout);
+                            spf, travis);
     }
 
     return 1;
