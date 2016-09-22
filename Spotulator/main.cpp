@@ -2,6 +2,7 @@
 #include <cassert>
 #include <string>
 #include <vector>
+#include <random>
 
 #include <SFML/Graphics.hpp>
 
@@ -89,19 +90,57 @@ sf::Vector2i cell_dimensions(const std::vector <std::string>& image_names)
     return cell_dims;
 }
 
+Direction rando_dir()
+{
+    std::random_device rand;
+
+    const unsigned int decide{rand()};
+
+    const unsigned int quart{rand.max()/4};
+
+    Direction dir;
+
+    if (decide < quart)
+    {
+        dir = Direction::up;
+    }
+    else if (decide < 2*quart)
+    {
+        dir = Direction::down;
+    }
+    else if (decide < 3*quart)
+    {
+        dir = Direction::right;
+    }
+    else
+    {
+        dir = Direction::left;
+    }
+
+    return dir;
+}
+
 sf::Vector2i dir_to_vec(const Direction& dir)
 {
     sf::Vector2i vec{0,0};
 
     switch (dir)
     {
+        case Direction::none:
+            vec = sf::Vector2i(0, 0);
+            break;
         case Direction::up:
             vec = sf::Vector2i(0, -1);
             break;
         case Direction::down:
             vec = sf::Vector2i(0, 1);
             break;
-
+        case Direction::right:
+            vec = sf::Vector2i(1, 0);
+            break;
+        case Direction::left:
+            vec = sf::Vector2i(-1, 0);
+            break;
         default:
             vec = sf::Vector2i(0, 0);
     }
@@ -155,6 +194,11 @@ class arrow
         m_sprite.setPosition(static_cast<sf::Vector2f>(m_posit));
     }
 
+    void randir()
+    {
+        m_dir = rando_dir();
+    }
+
     public:
 
     void display(sf::RenderWindow& window)
@@ -162,9 +206,9 @@ class arrow
         window.draw(m_sprite);
     }
 
-    arrow(const std::string& image_name, const Direction dir, const sf::Vector2i& posit,
+    arrow(const std::string& image_name, const sf::Vector2i& posit,
          const sf::Color& color)
-        : m_image_name(image_name), m_dir(dir), m_posit(posit), m_color(color),
+        : m_image_name(image_name), m_dir(), m_posit(posit), m_color(color),
           m_texture(), m_sprite(), m_dims()
     {
         texturize();
@@ -172,6 +216,7 @@ class arrow
         set_dims();
         set_origin();
         set_posit();
+        randir();
     }
 
     ~arrow()
@@ -415,11 +460,26 @@ int initiator(const std::string& program_name)
     return 1;
 }
 
+class Kip
+{
+public:
+    void SetX(int x) { this->m_x = x; }
+    int GetX() { return (*this).m_x; }
+
+private:
+    int m_x;
+};
+
 int main()
 {
+    Kip k;
+    k.SetX(42);
+    assert(k.GetX() == 42);
+
     const std::string program_name{"Spotulator"};
     assert(program_name != "");
 
     return initiator(program_name);
 }
+
 
