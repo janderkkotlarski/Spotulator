@@ -5,6 +5,8 @@
 
 #include <SFML/Graphics.hpp>
 
+enum class Direction {none, up, down, right, left};
+
 void assert_strings(const std::vector <std::string>& a_strings)
 {
     const int size = static_cast<int>(a_strings.size());
@@ -30,9 +32,14 @@ sf::Vector2u img_dims(const std::string& img_name)
     return texture.getSize();
 }
 
-sf::Vector2i tex_dims(sf::Texture& texture)
+sf::Vector2i sprite_dims(sf::Sprite& sprite)
 {
-    return static_cast<sf::Vector2i>(texture.getSize());
+    const sf::IntRect bounds{sprite.getLocalBounds()};
+
+    assert(bounds.width > 0);
+    assert(bounds.height > 0);
+
+    return sf::Vector2i(bounds.width, bounds.height);
 }
 
 sf::Vector2i cell_dimensions(const std::vector <std::string>& image_names)
@@ -82,11 +89,31 @@ sf::Vector2i cell_dimensions(const std::vector <std::string>& image_names)
     return cell_dims;
 }
 
-class spot
+sf::Vector2i dir_to_vec(const Direction& dir)
 {
-    const std::string m_spot_name;
+    sf::Vector2i vec{0,0};
 
-    const int m_type;
+    switch (dir)
+    {
+        case Direction::up:
+            vec = sf::Vector2i(0, -1);
+            break;
+        case Direction::down:
+            vec = sf::Vector2i(0, 1);
+            break;
+
+        default:
+            vec = sf::Vector2i(0, 0);
+    }
+
+    return vec;
+}
+
+class arrow
+{
+    const std::string m_image_name;
+
+    Direction m_dir;
 
     const sf::Vector2i m_posit;
 
@@ -100,11 +127,11 @@ class spot
 
     void texturize()
     {
-        assert(m_spot_name != "");
+        assert(m_image_name != "");
 
-        if (!m_texture.loadFromFile(m_spot_name))
+        if (!m_texture.loadFromFile(m_image_name))
         {
-            std::cout << m_spot_name << " not found!\n";
+            std::cout << m_image_name << " not found!\n";
         }
     }
 
@@ -113,19 +140,122 @@ class spot
         m_sprite.setTexture(m_texture);
     }
 
+    void set_dims()
+    {
+        m_dims = sprite_dims(m_sprite);
+    }
 
+    void set_origin()
+    {
+        m_sprite.setOrigin(0.5f*static_cast<sf::Vector2f>(m_dims));
+    }
+
+    void set_posit()
+    {
+        m_sprite.setPosition(static_cast<sf::Vector2f>(m_posit));
+    }
 
     public:
 
-    spot(const std::string& spot_name, const int type, const sf::Vector2i& posit,
+    void display(sf::RenderWindow& window)
+    {
+        window.draw(m_sprite);
+    }
+
+    arrow(const std::string& image_name, const Direction dir, const sf::Vector2i& posit,
          const sf::Color& color)
-        : m_spot_name(spot_name), m_type(type), m_posit(posit), m_color(color),
+        : m_image_name(image_name), m_dir(dir), m_posit(posit), m_color(color),
           m_texture(), m_sprite(), m_dims()
+    {
+        texturize();
+        set_texture();
+        set_dims();
+        set_origin();
+        set_posit();
+    }
+
+    ~arrow()
+    {
+    }
+};
+
+class spot
+{
+    const std::string m_image_name;
+
+    const int m_type;
+
+    Direction m_dir;
+
+    const sf::Vector2i m_posit;
+
+    const sf::Color m_color;
+
+    sf::Texture m_texture;
+
+    sf::Sprite m_sprite;
+
+    sf::Vector2i m_dims;
+
+    const int m_frames;
+
+    void texturize()
+    {
+        assert(m_image_name != "");
+
+        if (!m_texture.loadFromFile(m_image_name))
+        {
+            std::cout << m_image_name << " not found!\n";
+        }
+    }
+
+    void set_texture()
+    {
+        m_sprite.setTexture(m_texture);
+    }
+
+    void set_dims()
+    {
+        m_dims = sprite_dims(m_sprite);
+    }
+
+    void set_origin()
+    {
+        m_sprite.setOrigin(0.5f*static_cast<sf::Vector2f>(m_dims));
+    }
+
+    void set_posit()
+    {
+        m_sprite.setPosition(static_cast<sf::Vector2f>(m_posit));
+    }
+
+    void move_frame()
     {
 
     }
 
+    public:
 
+    void display(sf::RenderWindow& window)
+    {
+        window.draw(m_sprite);
+    }
+
+    spot(const std::string& image_name, const int type, const sf::Vector2i& posit,
+         const sf::Color& color, const int frames)
+        : m_image_name(image_name), m_type(type), m_dir(Direction::none), m_posit(posit),
+          m_color(color), m_texture(), m_sprite(), m_dims(), m_frames(frames)
+    {
+        texturize();
+        set_texture();
+        set_dims();
+        set_origin();
+        set_posit();
+    }
+
+    ~spot()
+    {
+    }
 };
 
 bool escaper()
@@ -181,7 +311,7 @@ void timing(sf::Clock& watch, sf::Time& timer, const float spf)
 int window_maker(const std::string& program_name,
                  std::vector <std::string>& image_names,
                  const int win_dim, const float spf,
-                 const float travis)
+                 const float travis, const int frames)
 {
     assert(program_name != "");
 
@@ -191,7 +321,13 @@ int window_maker(const std::string& program_name,
 
     assert(spf > 0.0f);
 
+    sf::Color white{255, 255, 255};
+
     sf::RenderWindow window(sf::VideoMode(win_dim, win_dim), program_name, sf::Style::Default);
+
+    const sf::Vector2i posit{win_dim/2, win_dim/2};
+
+    spot spode(image_names[0], 0, posit, white, frames);
 
     sf::Clock clock;
     sf::Time time;
@@ -204,6 +340,8 @@ int window_maker(const std::string& program_name,
         sf::Event event;
 
         window.clear();
+
+        spode.display(window);
 
         window.display();
 
@@ -266,10 +404,12 @@ int initiator(const std::string& program_name)
     const float timeout{30.0f};
     assert(timeout > 0.0f);
 
+    const int frames = 16;
+
     if (cell_dims != sf::Vector2i(0, 0))
     {
         return window_maker(program_name, image_names, win_dim,
-                            spf, travis);
+                            spf, travis, frames);
     }
 
     return 1;
