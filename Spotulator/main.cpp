@@ -148,11 +148,24 @@ sf::Vector2i dir_to_vec(const Direction& dir)
     return vec;
 }
 
+void dir_change(Direction& dir, Direction& oldir)
+{
+    oldir = dir;
+    dir = rando_dir();
+}
+
+void oldrase(Direction& oldir)
+{
+    oldir = Direction::none;
+}
+
 class arrow
 {
     const std::string m_image_name;
 
     Direction m_dir;
+
+    Direction m_oldir{Direction::none};
 
     const sf::Vector2i m_posit;
 
@@ -201,6 +214,11 @@ class arrow
 
     public:
 
+    sf::Vector2i show_posit()
+    {
+        return m_posit;
+    }
+
     void display(sf::RenderWindow& window)
     {
         window.draw(m_sprite);
@@ -230,9 +248,11 @@ class spot
 
     const int m_type;
 
-    Direction m_dir;
+    Direction m_dir{Direction::none};
 
     const sf::Vector2i m_posit;
+
+    sf::Vector2i m_vec{dir_to_vec(m_dir)};
 
     const sf::Color m_color;
 
@@ -243,6 +263,8 @@ class spot
     sf::Vector2i m_dims;
 
     const int m_frames;
+
+    int m_moves{0};
 
     void texturize()
     {
@@ -276,10 +298,21 @@ class spot
 
     void move_frame()
     {
+        --m_moves;
+
 
     }
 
     public:
+
+    void arrow_check(arrow& pointer)
+    {
+        if (m_posit == pointer.show_posit() &&
+            m_type == 1)
+        {
+            m_moves = m_frames;
+        }
+    }
 
     void display(sf::RenderWindow& window)
     {
@@ -288,7 +321,7 @@ class spot
 
     spot(const std::string& image_name, const int type, const sf::Vector2i& posit,
          const sf::Color& color, const int frames)
-        : m_image_name(image_name), m_type(type), m_dir(Direction::none), m_posit(posit),
+        : m_image_name(image_name), m_type(type), m_posit(posit),
           m_color(color), m_texture(), m_sprite(), m_dims(), m_frames(frames)
     {
         texturize();
