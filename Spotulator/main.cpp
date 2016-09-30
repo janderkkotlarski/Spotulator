@@ -48,49 +48,76 @@ sf::Vector2i cell_dimensions(const std::vector <std::string>& image_names)
     const int size{static_cast<int>(image_names.size())};
     assert(size > 0);
 
-    for (int count{0}; count < size; ++ count)
-    {
-        assert(image_names[count] != "");
-    }
-
     const sf::Vector2u null_dims{0, 0};
     assert(null_dims == sf::Vector2u(0, 0));
 
-    std::vector <sf::Vector2u> image_dims;
-
-    for (int count{0}; count < size; ++count)
-    {
-        image_dims.push_back(img_dims(image_names[count]));
-    }
-
-    assert(image_dims.size() == static_cast<unsigned int>(size));
-
     int check{0};
+    assert(check == 0);
 
-    if (image_dims[0] != sf::Vector2u(0, 0))
-    {
-        ++check;
-    }
+    sf::Vector2i cell_dims{sf::Vector2i(0, 0)};
+    assert(cell_dims == sf::Vector2i(0, 0));
 
-    for (int count{1}; count < size; ++count)
+
+    if (size > 0)
     {
-        if (image_dims[0] == image_dims[count])
+        for (int count{0}; count < size; ++ count)
+        {
+            assert(image_names[count] != "");
+        }
+
+        std::vector <sf::Vector2u> image_dims;
+
+        for (int count{0}; count < size; ++count)
+        {
+            image_dims.push_back(img_dims(image_names[count]));
+        }
+
+        assert(image_dims.size() == static_cast<unsigned int>(size));
+
+        if (image_dims[0] != sf::Vector2u(0, 0))
         {
             ++check;
         }
-    }
 
-    sf::Vector2i cell_dims{sf::Vector2i(0, 0)};
+        for (int count{1}; count < size; ++count)
+        {
+            if (image_dims[0] == image_dims[count])
+            {
+                ++check;
+            }
+        }
 
-    if (check == size)
-    {
-        cell_dims = static_cast<sf::Vector2i>(image_dims[0]);
+        if (check == size)
+        {
+            cell_dims = static_cast<sf::Vector2i>(image_dims[0]);
+        }
     }
 
     return cell_dims;
 }
 
+bool square_vec(const sf::Vector2i& vec)
+{
+    if (vec.x > 0 && vec.x == vec.y)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool equal_vecs(const sf::Vector2i& vec_a, const sf::Vector2i& vec_b)
+{
+    if (vec_a == vec_b)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 Direction rando_dir()
+noexcept
 {
     std::random_device rand;
 
@@ -120,29 +147,35 @@ Direction rando_dir()
     return dir;
 }
 
-sf::Vector2i dir_to_vec(const Direction& dir)
+sf::Vector2i dir_to_vec(const Direction& dir, const int step)
+noexcept
 {
+    assert(step > 0);
+
     sf::Vector2i vec{0,0};
 
-    switch (dir)
+    if (step > 0)
     {
-        case Direction::none:
-            vec = sf::Vector2i(0, 0);
-            break;
-        case Direction::up:
-            vec = sf::Vector2i(0, -1);
-            break;
-        case Direction::down:
-            vec = sf::Vector2i(0, 1);
-            break;
-        case Direction::right:
-            vec = sf::Vector2i(1, 0);
-            break;
-        case Direction::left:
-            vec = sf::Vector2i(-1, 0);
-            break;
-        default:
-            vec = sf::Vector2i(0, 0);
+        switch (dir)
+        {
+            case Direction::none:
+                vec = sf::Vector2i(0, 0);
+                break;
+            case Direction::up:
+                vec = sf::Vector2i(0, -step);
+                break;
+            case Direction::down:
+                vec = sf::Vector2i(0, step);
+                break;
+            case Direction::right:
+                vec = sf::Vector2i(step, 0);
+                break;
+            case Direction::left:
+                vec = sf::Vector2i(-step, 0);
+                break;
+            default:
+                vec = sf::Vector2i(0, 0);
+        }
     }
 
     return vec;
@@ -245,26 +278,23 @@ class arrow
 class spot
 {
     const std::string m_image_name;
-
     const int m_type;
 
     Direction m_dir{Direction::none};
+    sf::Vector2i m_posit;
 
-    const sf::Vector2i m_posit;
-
-    sf::Vector2i m_vec{dir_to_vec(m_dir)};
+    int m_moves{0};
+    sf::Vector2i m_vec{sf::Vector2i (0, 0)};
 
     const sf::Color m_color;
 
     sf::Texture m_texture;
-
     sf::Sprite m_sprite;
-
     sf::Vector2i m_dims;
 
-    const int m_frames;
+    const int m_frames{0};
 
-    int m_moves{0};
+    int m_step{0};
 
     void texturize()
     {
@@ -296,11 +326,19 @@ class spot
         m_sprite.setPosition(static_cast<sf::Vector2f>(m_posit));
     }
 
-    void move_frame()
+    void set_step()
     {
-        --m_moves;
+        m_step = m_dims.x/m_frames;
+    }
 
+    void update_posit()
+    {
+        m_posit = m_posit + m_vec;
+    }
 
+    void update_vec()
+    {
+        m_vec = dir_to_vec(m_dir, m_step);
     }
 
     public:
@@ -314,6 +352,16 @@ class spot
         }
     }
 
+    void move_frame()
+    {
+        if (m_moves > 0)
+        {
+            update_posit();
+            set_posit();
+            --m_moves;
+        }
+    }
+
     void display(sf::RenderWindow& window)
     {
         window.draw(m_sprite);
@@ -322,13 +370,15 @@ class spot
     spot(const std::string& image_name, const int type, const sf::Vector2i& posit,
          const sf::Color& color, const int frames)
         : m_image_name(image_name), m_type(type), m_posit(posit),
-          m_color(color), m_texture(), m_sprite(), m_dims(), m_frames(frames)
+          m_color(color), m_texture(), m_sprite(), m_dims(), m_frames(frames),
+          m_step()
     {
         texturize();
         set_texture();
         set_dims();
         set_origin();
         set_posit();
+        set_step();
     }
 
     ~spot()
@@ -358,7 +408,7 @@ int closing(sf::RenderWindow& window)
     return 0;
 }
 
-bool traving(sf::Clock& clock, sf::Time time, const float travis)
+bool traving(sf::Clock& clock, sf::Time& time, const float travis)
 {
     assert(travis > 0.0f);
 
@@ -388,18 +438,21 @@ void timing(sf::Clock& watch, sf::Time& timer, const float spf)
 
 int window_maker(const std::string& program_name,
                  std::vector <std::string>& image_names,
-                 const int win_dim, const float spf,
-                 const float travis, const int frames)
+                 const int win_dim, const sf::Vector2i& cell_dims,
+                 const float spf, const float travis, const int frames)
 {
     assert(program_name != "");
-
-    assert_strings(image_names);
-
+    assert(is_strings(image_names));
     assert(win_dim > 0);
-
     assert(spf > 0.0f);
 
-    sf::Color white{255, 255, 255};
+    const sf::Vector2i null_vect{0, 0};
+    assert(equal_vecs(null_vect, sf::Vector2i(0, 0)));
+
+    assert(square_vec(cell_dims));
+
+    const sf::Color white{255, 255, 255};
+    assert(white == sf::Color(255, 255, 255));
 
     sf::RenderWindow window(sf::VideoMode(win_dim, win_dim), program_name, sf::Style::Default);
 
@@ -442,7 +495,6 @@ int window_maker(const std::string& program_name,
         {
             return 0;
         }
-
     }
 
     return 1;
@@ -466,8 +518,10 @@ int initiator(const std::string& program_name)
     assert(image_names[size] != "");
     ++size;
 
-    const sf::Vector2i cell_dims{cell_dimensions(image_names)};
+    /* const */ sf::Vector2i cell_dims{cell_dimensions(image_names)};
     assert(cell_dims.x == cell_dims.y);
+
+    /**/ ++cell_dims.x;
 
     const int cells{11};
     assert(cells > 0);
@@ -487,7 +541,7 @@ int initiator(const std::string& program_name)
     if (cell_dims != sf::Vector2i(0, 0))
     {
         return window_maker(program_name, image_names, win_dim,
-                            spf, travis, frames);
+                            cell_dims, spf, travis, frames);
     }
 
     return 1;
@@ -512,7 +566,13 @@ int main()
     const std::string program_name{"Spotulator"};
     assert(program_name != "");
 
-    return initiator(program_name);
+    std::cout << program_name << '\n';
+
+    const int output{initiator(program_name)};
+
+    std::cout << "Output == " << output << '\n';
+
+    return output;
 }
 
 
